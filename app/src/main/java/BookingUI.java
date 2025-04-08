@@ -6,6 +6,10 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 
 public class BookingUI {
     private JTextField dateField, labelField;
@@ -14,22 +18,22 @@ public class BookingUI {
     private ScheduleManager manager;
 
     public BookingUI() {
-        manager = new ScheduleManager(); // Use ScheduleManager instead
+        this(new ScheduleManager());
+    }
 
-        // Create the main frame
+    public BookingUI(ScheduleManager existingManager) {
+        this.manager = existingManager;
+
         JFrame frame = new JFrame("Booking Calendar");
         frame.setSize(500, 400);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
 
-        // Create input panel
         JPanel inputPanel = new JPanel(new FlowLayout());
 
-        // Date input
         JLabel dateLabel = new JLabel("Enter Date (YYYY-MM-DD):");
-        dateField = new JTextField(10); // Use instance variable
+        dateField = new JTextField(10);
 
-        // Time selection
         JLabel timeLabel = new JLabel("Start Time:");
         String[] times = {
             "01:00", "01:15", "01:30", "01:45",
@@ -45,56 +49,49 @@ public class BookingUI {
             "11:00", "11:15", "11:30", "11:45",
             "12:00", "12:15", "12:30", "12:45"
         };
-        timeBox = new JComboBox<>(times); // Use instance variable
+        timeBox = new JComboBox<>(times);
 
-        // AM/PM selection for start time
         String[] amPmOptions = {"AM", "PM"};
         amPmBox = new JComboBox<>(amPmOptions);
 
-        // End Time selection
         JLabel endTimeLabel = new JLabel("End Time:");
         endTimeBox = new JComboBox<>(times);
 
-        // AM/PM selection for end time
         String[] endAmPmOptions = {"AM", "PM"};
-        endAmPmBox = new JComboBox<>(endAmPmOptions); // Use instance variable
+        endAmPmBox = new JComboBox<>(endAmPmOptions);
 
-        // Event Name input
         JLabel labelLabel = new JLabel("Event Name:");
-        labelField = new JTextField(10); // Use instance variable
+        labelField = new JTextField(10);
 
-        // Category selection
         JLabel categoryLabel = new JLabel("Category:");
         String[] categories = {"Study", "Work", "Leisure"};
-        categoryBox = new JComboBox<>(categories); // Use instance variable
+        categoryBox = new JComboBox<>(categories);
 
-        // Add button
         JButton bookButton = new JButton("Add");
+        JButton analyzeButton = new JButton("Studify Schedule");
 
-        // Add components to panel in the correct order
         inputPanel.add(dateLabel);
         inputPanel.add(dateField);
         inputPanel.add(timeLabel);
         inputPanel.add(timeBox);
-        inputPanel.add(amPmBox); // 🔹 Add AM/PM for start time
+        inputPanel.add(amPmBox);
         inputPanel.add(endTimeLabel);
         inputPanel.add(endTimeBox);
-        inputPanel.add(endAmPmBox); // 🔹 Add AM/PM for end time
+        inputPanel.add(endAmPmBox);
         inputPanel.add(labelLabel);
         inputPanel.add(labelField);
         inputPanel.add(categoryLabel);
         inputPanel.add(categoryBox);
         inputPanel.add(bookButton);
+        inputPanel.add(analyzeButton);
 
         frame.add(inputPanel, BorderLayout.NORTH);
 
-        // Booking display area
         bookingArea = new JTextArea(10, 30);
         bookingArea.setEditable(false);
         JScrollPane scrollPane = new JScrollPane(bookingArea);
         frame.add(scrollPane, BorderLayout.CENTER);
 
-        // Attach Action Listener to Book Button
         bookButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -102,61 +99,84 @@ public class BookingUI {
             }
         });
 
-        // Show the Frame
+        analyzeButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                analyzeSchedule();
+            }
+        });
+
         frame.setVisible(true);
     }
 
-    // Method to handle booking logic
     private void handleBooking() {
         String date = dateField.getText();
-        String time = (String) timeBox.getSelectedItem();
-        String endTime = (String) endTimeBox.getSelectedItem();
+        String startTime = (String) timeBox.getSelectedItem();
         String amPm = (String) amPmBox.getSelectedItem();
-        String endAmPm = (String) endAmPmBox.getSelectedItem(); // ✅ Get AM/PM for end time
         String category = (String) categoryBox.getSelectedItem();
         String eventLabel = labelField.getText().trim();
 
-        System.out.println("User input - Date: " + date + ", Start Time: " + time + " " + amPm + ", End Time: " + endTime + " " + endAmPm +
-        ", Category: " + category + ", Label: " + eventLabel);
-            
         if (eventLabel.isEmpty()) {
-            eventLabel = "No Label"; // Default if empty
+            eventLabel = "No Label";
         }
 
         if (!date.isEmpty()) {
-            String startTime = time + " " + amPm;
-            String formattedendTime = endTime + " " + (String) endAmPmBox.getSelectedItem();
+            String fullStartTime = startTime + " " + amPm;
+            int duration = 60;
+            String calculatedEndTime = manager.calculateEndTime(fullStartTime, duration);
 
-
-            // Create the Event object
-            Event event = new Event(eventLabel, category, date, startTime, formattedendTime);
-            manager.addEvent(event); // Add it to the schedule
-
-            // If it's a Study event, trigger auto-scheduling
-            if (category.equals("Study")) {
-                String[] daysOfWeek = {date}; // You can expand this if needed
-                manager.autoScheduleStudy(daysOfWeek);
-            }
-        }  
-        updateBookings();        
-    }
-
-    // Updates the display area with bookings
-    private void updateBookings() {
-        bookingArea.setText(""); // Clear previous entries
-    
-        for (String date : manager.getSchedule().keySet()) { 
-            bookingArea.append("\n📅 Schedule for " + date + ":\n");
-            
-            for (Event event : manager.getSchedule().get(date)) {
-                bookingArea.append("   🕒 " + event.getStartTime() + " - " + event.getEndTime() + 
-                    " | " + event.getCategory() + " | " + event.getTitle() + "\n");
-            }
+            Event event = new Event(eventLabel, category, date, fullStartTime, calculatedEndTime);
+            manager.addEvent(event);
+            updateBookings();
         }
     }
-    
 
-    public static void main(String[] args) {
-        new BookingUI();
+    private void analyzeSchedule() {
+        String[] studyRange = {
+            "03-16-2025", "03-17-2025", "03-18-2025", "03-19-2025", "03-20-2025", "03-21-2025", "03-22-2025",
+            "03-23-2025", "03-24-2025", "03-25-2025", "03-26-2025", "03-27-2025", "03-28-2025", "03-29-2025",
+            "03-30-2025", "03-31-2025", "04-01-2025", "04-02-2025", "04-03-2025", "04-04-2025", "04-05-2025",
+            "04-06-2025", "04-07-2025", "04-08-2025", "04-09-2025", "04-10-2025", "04-11-2025", "04-12-2025"
+        };
+
+        int studyCount = 0;
+        for (String date : manager.getSchedule().keySet()) {
+            for (Event event : manager.getSchedule().get(date)) {
+                if (event.getCategory().equalsIgnoreCase("Study")) {
+                    studyCount++;
+                }
+            }
+        }
+
+        if (studyCount >= 3) {
+            JOptionPane.showMessageDialog(null, "Your schedule is already well-balanced!");
+        } else {
+            JOptionPane.showMessageDialog(null, "Adding more study sessions to help balance your week.");
+            manager.autoScheduleStudy(studyRange);
+            updateBookings();
+        }
     }
+
+    private void updateBookings() {
+    bookingArea.setText(""); // clear
+
+    List<String> sortedDates = new ArrayList<>(manager.getSchedule().keySet());
+    Collections.sort(sortedDates); // make sure dates are in order
+
+    for (String date : sortedDates) {
+        bookingArea.append("\nSchedule for " + date + ":\n");
+        for (Event event : manager.getSchedule().get(date)) {
+            bookingArea.append(event.getTitle() + " - " + event.getCategory() +
+                " from " + event.getStartTime() + " to " + event.getEndTime() + "\n");
+        }
+    }
+}
+
+
+public static void main(String[] args) {
+    ScheduleManager manager = new ScheduleManager();
+    new BookingUI(manager);
+}
+
+    
 }

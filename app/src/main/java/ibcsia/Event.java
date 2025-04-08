@@ -35,6 +35,24 @@ public class Event {
         return endTime;
     }
 
-    // Getters and setters here
+    public int getStartTimeAsMinutes() {
+        String[] parts = startTime.split(" ");
+        String time = parts[0];
+        String amPm = parts[1];
+    
+        String[] hm = time.split(":");
+        int hour = Integer.parseInt(hm[0]);
+        int minute = Integer.parseInt(hm[1]);
+    
+        if (amPm.equals("PM") && hour != 12) hour += 12;
+        if (amPm.equals("AM") && hour == 12) hour = 0;
+    
+        return hour * 60 + minute;
+    }
+
+    
+    
+
+    
 }
 
